@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bluetooth / BLE integration — reverse-engineered, verified on hardware</title>
+<meta name="description" content="Fixed-price Bluetooth BLE integration and debugging. Vendor GATT protocol reverse engineering, notification parsing, reconnect handling. Verified on real hardware.">
+<style>
+  :root{
+    --bg:#0b0d10; --panel:#12161b; --line:#242b34; --fg:#e8edf3; --dim:#8b98a8;
+    --accent:#5ee0b0; --accent2:#4aa8ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+    font:16px/1.6 ui-sans-serif,-apple-system,"SF Pro Text",Inter,system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:56px 22px 88px}
+  .eyebrow{font:600 12px/1 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent);margin-bottom:18px}
+  h1{font-size:clamp(30px,5vw,46px);line-height:1.1;letter-spacing:-.025em;margin:0 0 18px;font-weight:680}
+  h1 em{font-style:normal;color:var(--accent)}
+  .lede{font-size:18px;color:#b6c2d1;max-width:62ch;margin:0 0 30px}
+  .cta{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:56px}
+  a.btn{display:inline-block;padding:12px 20px;border-radius:10px;text-decoration:none;
+    font-weight:600;font-size:15px;transition:.15s}
+  .btn.primary{background:var(--accent);color:#06120e}
+  .btn.primary:hover{background:#7ceec3}
+  .btn.ghost{border:1px solid var(--line);color:var(--fg)}
+  .btn.ghost:hover{border-color:var(--accent);color:var(--accent)}
+  h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);
+    font-weight:600;margin:0 0 18px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  section{margin-bottom:52px}
+  .cards{display:grid;gap:14px}
+  @media(min-width:720px){.cards.two{grid-template-columns:1fr 1fr}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px 22px}
+  .card h3{margin:0 0 8px;font-size:17px;letter-spacing:-.01em}
+  .card p{margin:0;color:#a8b5c4;font-size:15px}
+  .card .price{display:block;margin-top:14px;font:600 14px/1 ui-monospace,Menlo,monospace;
+    color:var(--accent)}
+  table{width:100%;border-collapse:collapse;font-size:14.5px}
+  th,td{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--dim);font-weight:600;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+  td.v{color:var(--accent);white-space:nowrap;font:600 13px/1.4 ui-monospace,Menlo,monospace}
+  code{background:#1b2027;padding:2px 6px;border-radius:5px;font-size:13.5px;color:#cfe6ff}
+  ul{padding-left:20px;color:#a8b5c4}
+  li{margin-bottom:7px}
+  .foot{border-top:1px solid var(--line);padding-top:22px;color:var(--dim);font-size:14px}
+  .foot a{color:var(--accent2)}
+  .note{font-size:14px;color:var(--dim);margin-top:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="eyebrow">Bluetooth / BLE · fixed price · remote</div>
+
+  <h1>Your device connects. Then it <em>silently stops working.</em> I fix that.</h1>
+
+  <p class="lede">
+    I reverse-engineer undocumented Bluetooth vendor protocols and ship working
+    integrations. Not "BLE experience on a résumé" — actual GATT services cracked by hand,
+    every write confirmed by reading the value back off the hardware.
+  </p>
+
+  <div class="cta">
+    <a class="btn primary" href="https://github.com/xapqrt">Send me the device + the error</a>
+    <a class="btn ghost" href="#pricing">See fixed prices</a>
+  </div>
+
+  <section>
+    <h2>Proof, not claims</h2>
+    <p class="lede" style="font-size:16px;margin-bottom:18px">
+      My own build: a controller for OnePlus / OPPO / realme earbuds that talks straight to
+      the vendor GATT service — no vendor app, macOS host, local web UI. Firmware
+      <code>1,2,138</code>. Every row below was exercised on a live pair: write a value,
+      read it back from the device, only then trust it.
+    </p>
+    <table>
+      <tr><th>Capability</th><th>Status</th></tr>
+      <tr><td>Noise control — 7 distinct modes (Off / Transparency / Adaptive / Cancelling Low·Moderate·High / Auto)</td><td class="v">verified write</td></tr>
+      <tr><td>EQ presets + custom slot, BassWave −5…+5 with device-reported range</td><td class="v">verified write</td></tr>
+      <tr><td>Battery per-bud, charging flags, wear state (in ear / out of case / in case)</td><td class="v">verified read</td></tr>
+      <tr><td>Notification parsing, write-with-response timing, reconnect + re-subscribe loops</td><td class="v">stable</td></tr>
+    </table>
+    <p class="note">
+      The unglamorous 90% is what clients actually pay for: subscription re-establishment
+      after sleep, MTU negotiation, state caching so the UI never lies, and a reconnect
+      path that survives the device going out of range.
+    </p>
+  </section>
+
+  <section id="pricing">
+    <h2>Fixed prices — no hourly billing, no discovery-call theatre</h2>
+    <div class="cards two">
+      <div class="card">
+        <h3>Debug one BLE problem</h3>
+        <p>Connects but drops. Notifications never fire. Write returns success and nothing
+           happens. You get the root cause plus a patch or a precise fix list.</p>
+        <span class="price">$40 · 1–2 days</span>
+      </div>
+      <div class="card">
+        <h3>Map a device's GATT service</h3>
+        <p>You have a peripheral and no documentation. I dump every characteristic, find the
+           write path, and hand you a documented map with runnable sample code.</p>
+        <span class="price">$120 · 2–4 days</span>
+      </div>
+      <div class="card">
+        <h3>Small integration</h3>
+        <p>Add Bluetooth control to your app or script: macOS (CoreBluetooth), Python
+           (bleak), or iOS side. Includes reconnect handling and state caching.</p>
+        <span class="price">from $250</span>
+      </div>
+      <div class="card">
+        <h3>Automation / scraping</h3>
+        <p>Python jobs that have to run unattended without babysitting: scraping, sync,
+           scheduled reports, API plumbing.</p>
+        <span class="price">from $60</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>How it goes</h2>
+    <ul>
+      <li>You send the device model, your stack, and the exact error or behaviour.</li>
+      <li>I answer in one message whether it's fixable — <strong>free, no charge for the answer</strong>.</li>
+      <li>Fixed price and a delivery date, agreed before anything starts.</li>
+      <li>50% to start, 50% on delivery. Working sample code included, not just advice.</li>
+    </ul>
+    <p class="note">
+      Send a capture if you have one: <code>nRF Connect</code> logs, <code>btmon</code> dumps,
+      or the raw notification bytes. It usually cuts a day off the diagnosis.
+    </p>
+  </section>
+
+  <div class="foot">
+    Work with me → <a href="https://github.com/xapqrt">github.com/xapqrt</a> — open an issue or
+    a DM with your device and error. Replies within a few hours, most timezones.
+  </div>
+
+</div>
+</body>
+</html>
